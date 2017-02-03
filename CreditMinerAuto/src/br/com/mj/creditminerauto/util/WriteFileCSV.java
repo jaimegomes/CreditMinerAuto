@@ -29,8 +29,6 @@ public class WriteFileCSV {
 
 		PropertyConfigurator.configure("src/resources/log4j.properties");
 
-		log.info("Gerando arquivo csv " + destino.getAbsolutePath());
-
 		FileWriter fileWriter = null;
 
 		try {
@@ -45,7 +43,7 @@ public class WriteFileCSV {
 				writeLine(fileWriter, dto);
 			}
 
-			log.info("Arquivo CSV criado com sucesso. " + destino.getAbsolutePath());
+			log.info("Arquivo " + destino.getAbsolutePath() + " criado com sucesso. ");
 			System.out.println("Arquivo CSV criado com sucesso");
 
 		} catch (Exception e) {
@@ -131,11 +129,11 @@ public class WriteFileCSV {
 		fileWriter.append(COMMA_DELIMITER);
 		fileWriter.append(clienteDTO.getValorRefinBruto() != null ? clienteDTO.getValorRefinBruto() : "");
 		fileWriter.append(COMMA_DELIMITER);
-		fileWriter.append(clienteDTO.getValorParcela());
+		fileWriter.append(clienteDTO.getValorParcela() != null ? clienteDTO.getValorParcela() : "");
 		fileWriter.append(COMMA_DELIMITER);
-		fileWriter.append(clienteDTO.getTipoEmp());
+		fileWriter.append(clienteDTO.getTipoEmp() != null ? clienteDTO.getTipoEmp() : "");
 		fileWriter.append(COMMA_DELIMITER);
-		fileWriter.append(clienteDTO.getTipo());
+		fileWriter.append(clienteDTO.getTipo() != null ? clienteDTO.getTipo() : "");
 		fileWriter.append(NEW_LINE_SEPARATOR);
 
 	}

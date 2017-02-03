@@ -21,35 +21,37 @@ import br.com.mj.creditminerauto.util.WriteFileCSV;
 public class Principal {
 
 	private static Thread worker;
-	private static String ARQUIVO_LEITURA = "vanessa_bmg.csv";
-	private static int contador;
+	private static String DIRETORIO = "/home/CreditMiner/leitura_automatica";
 	private static Logger log = Logger.getLogger("log");
 
 	public static void main(String[] args) {
 		PropertyConfigurator.configure("src/resources/log4j.properties");
-		iniciarProcesso();
+
+		File diretorio = new File(DIRETORIO);
+		File listArquivos[] = diretorio.listFiles();
+
+		for (File arquivo : listArquivos) {
+			if (arquivo.getName().contains(".csv")) {
+				iniciarProcesso(arquivo);
+			}
+		}
 
 	}
 
-	public static void iniciarProcesso() {
+	public static void iniciarProcesso(final File file) {
 
-		log.info("Iniciando Processamento do arquivo: " + ARQUIVO_LEITURA);
-
-		contador = 0;
+		log.info("Iniciando Processamento do arquivo: " + file.getName());
 
 		try {
-			final List<CsvDTO> list = Util.parseCsvFileToBeans(CsvDTO.class, new File(getCaminhoArquivoLeitura()));
+			final List<CsvDTO> list = Util.parseCsvFileToBeans(CsvDTO.class, new File(file.getAbsolutePath()));
 
 			worker = new Thread() {
 				public void run() {
 
 					List<ClienteDTO> listaClientesPreenchida = new ArrayList<ClienteDTO>();
-
-					final int total = list.size();
+					ClienteDTO clienteDTO = null;
 
 					for (CsvDTO cpf : list) {
-
-						long start = System.currentTimeMillis();
 
 						String cpfFormatado = StringUtils.leftPad(cpf.getCpf(), 11, "0");
 
@@ -59,15 +61,15 @@ public class Principal {
 						if (retornoJson != null && !retornoJson.isEmpty()) {
 
 							cliente = retornoJson.get(0);
+							List<Contrato> listContratos = cliente.getResumoFinanceiro().getContratos();
 
-							// para cada contrato ele cria um objeto ClienteDTO
-							// para
-							// preencher o csv com todos os contratos.
-							for (Contrato con : cliente.getResumoFinanceiro().getContratos()) {
+							// verifica se existe contrato, caso não exista ele
+							// cria um objeto somente com os dados existentes
+							if (listContratos == null || listContratos.isEmpty()) {
 
-								ClienteDTO clienteDTO = new ClienteDTO(cliente.getMatricula(), cliente.getNome(),
-										cliente.getCpf(), cliente.getDataNascimento(), cliente.getIdade(),
-										cliente.getSexo(), cliente.getOrgao(), cliente.getCargo(), cliente.getLotacao(),
+								clienteDTO = new ClienteDTO(cliente.getMatricula(), cliente.getNome(), cliente.getCpf(),
+										cliente.getDataNascimento(), cliente.getIdade(), cliente.getSexo(),
+										cliente.getOrgao(), cliente.getCargo(), cliente.getLotacao(),
 										cliente.getSalario(), cliente.getRegimeJuridico(),
 										cliente.getResumoFinanceiro().getDataCompetencia(),
 										cliente.getResumoFinanceiro().getMargemConsignavelEmp(),
@@ -77,35 +79,52 @@ public class Principal {
 										cliente.getResumoFinanceiro().getValorConsignadoRmc(),
 										cliente.getResumoFinanceiro().getMargemDisponivelRmc(),
 										cliente.getResumoFinanceiro().getQtdEmp(),
-										cliente.getResumoFinanceiro().getQtdRmc(), cliente.getTipo(),
-										con.getIdContratoEmp(), con.getDataInicioDesconto(), con.getDataFimDesconto(),
-										con.getIdBancoEmp(), con.getNomeBancoEmp(), con.getQtdParcelas(),
-										con.getQtdParcelasRestante(), con.getValorQuitacao(),
-										con.getValorRefinDisponivel(), con.getValorRefinBruto(), con.getValorParcela(),
-										con.getTipoEmp());
+										cliente.getResumoFinanceiro().getQtdRmc(), cliente.getTipo(), null, null, null,
+										null, null, null, null, null, null, null, null, null);
 
 								listaClientesPreenchida.add(clienteDTO);
 
+							} else {
+
+								// caso exista contrato ele cria um objeto para
+								// cada contrato
+								for (Contrato con : cliente.getResumoFinanceiro().getContratos()) {
+
+									clienteDTO = new ClienteDTO(cliente.getMatricula(), cliente.getNome(),
+											cliente.getCpf(), cliente.getDataNascimento(), cliente.getIdade(),
+											cliente.getSexo(), cliente.getOrgao(), cliente.getCargo(),
+											cliente.getLotacao(), cliente.getSalario(), cliente.getRegimeJuridico(),
+											cliente.getResumoFinanceiro().getDataCompetencia(),
+											cliente.getResumoFinanceiro().getMargemConsignavelEmp(),
+											cliente.getResumoFinanceiro().getValorConsignadoEmp(),
+											cliente.getResumoFinanceiro().getMargemDisponivelEmp(),
+											cliente.getResumoFinanceiro().getMargemConsignavelRmc(),
+											cliente.getResumoFinanceiro().getValorConsignadoRmc(),
+											cliente.getResumoFinanceiro().getMargemDisponivelRmc(),
+											cliente.getResumoFinanceiro().getQtdEmp(),
+											cliente.getResumoFinanceiro().getQtdRmc(), cliente.getTipo(),
+											con.getIdContratoEmp(), con.getDataInicioDesconto(),
+											con.getDataFimDesconto(), con.getIdBancoEmp(), con.getNomeBancoEmp(),
+											con.getQtdParcelas(), con.getQtdParcelasRestante(), con.getValorQuitacao(),
+											con.getValorRefinDisponivel(), con.getValorRefinBruto(),
+											con.getValorParcela(), con.getTipoEmp());
+
+									listaClientesPreenchida.add(clienteDTO);
+
+								}
 							}
 
 						}
 
-						contador++;
-
-						long end = System.currentTimeMillis();
-						double totalTempoCpf = Util.calculaTempoExecucao(start, end);
-
-						System.out.println(
-								"Status " + contador + "/" + total + " tempo processamento: " + totalTempoCpf / 1000);
-						log.info("Status " + contador + "/" + total + " tempo processamento: " + totalTempoCpf / 1000);
 					}
 
-					log.info(ARQUIVO_LEITURA + "Finalizado!!!");
-					System.out.println(ARQUIVO_LEITURA + "Finalizado!!!");
+					log.info(file.getName() + " Finalizado!!!");
+					System.out.println(file.getName() + " Finalizado!!!");
 					// stop na thread
 					worker.interrupt();
 
-					WriteFileCSV.createCsvFile(listaClientesPreenchida, new File(getCaminhoDestinoArquivo()));
+					WriteFileCSV.createCsvFile(listaClientesPreenchida,
+							new File(getCaminhoDestinoArquivo(file.getName())));
 				}
 			};
 
@@ -117,7 +136,7 @@ public class Principal {
 
 	}
 
-	public static String getCaminhoDestinoArquivo() {
+	public static String getCaminhoDestinoArquivo(String nomeArquivo) {
 
 		Date dataAtual = new Date();
 
@@ -130,14 +149,9 @@ public class Principal {
 		sbResultado.append("_");
 		sbResultado.append(Util.retornaAno(dataAtual));
 		sbResultado.append("_");
-		sbResultado.append(ARQUIVO_LEITURA);
+		sbResultado.append(nomeArquivo);
 
 		return "/home/CreditMiner/arquivos_gerados" + File.separator + sbResultado.toString();
-
-	}
-
-	public static String getCaminhoArquivoLeitura() {
-		return "/home/CreditMiner/leitura_automatica" + File.separator + ARQUIVO_LEITURA;
 
 	}
 
